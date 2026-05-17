@@ -1,0 +1,26 @@
+{
+  "name": "अलार्म घड़ी - Clock Alarm Pro",
+  "short_name": "अलार्म घड़ी",
+  "description": "स्मार्ट अलार्म घड़ी - कस्टम रिंगटोन, हिंदी बोलने वाला मैसेज और मेडिसिन रिमाइंडर",
+  "start_url": "./alarm-clock-app.html",
+  "display": "standalone",
+  "background_color": "#18181b",
+  "theme_color": "#6366f1",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2950/2950709.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2950/2950709.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "hi"
+}
