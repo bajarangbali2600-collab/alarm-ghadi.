@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="अलार्म घड़ी">
+    <title>अलार्म घड़ी • Clock Alarm</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: #6366f1;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .digital-clock {
+            font-family: 'Space Grotesk', monospace;
+            font-feature-settings: "tnum";
+            letter-spacing: -0.05em;
+        }
+
+        .alarm-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .alarm-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        .section-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .time-display {
+            font-size: 4.5rem;
+            line-height: 1;
+            font-weight: 700;
+            letter-spacing: -0.08em;
+        }
+
+        .modern-input {
+            transition: all 0.2s ease;
+        }
+        
+        .modern-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .alarm-active {
+            animation: alarm-pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes alarm-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+
+        .modal {
+            animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .nav-active {
+            background-color: #312e81;
+            color: white;
+        }
+
+        .chip {
+            transition: all 0.2s ease;
+        }
+
+        .chip:hover {
+            transform: scale(1.05);
+        }
+
+        .alarm-time {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <!-- Navbar -->
+    <nav class="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                    <i class="fa-solid fa-clock text-white text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-display text-3xl font-semibold tracking-tighter">अलार्म घड़ी</h1>
+                    <p class="text-[10px] text-zinc-500 -mt-1">Clock Alarm Pro</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-x-3">
+                <!-- Install App Button (PWA) -->
+                <button id="installBtn" onclick="installPWA()"
+                        class="hidden items-center gap-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 transition-all rounded-3xl text-sm font-medium text-white shadow-lg">
+                    <i class="fa-solid fa-download"></i>
+                    <span class="hidden md:inline">Install App</span>
+                </button>
+                
+                <!-- Volume Control -->
+                <div class="flex items-center gap-x-2 bg-zinc-900 px-3 py-1.5 rounded-3xl border border-zinc-800">
+                    <i class="fa-solid fa-volume-high text-indigo-400"></i>
+                    <input type="range" id="volumeSlider" 
+                           class="w-24 accent-indigo-500" 
+                           min="0" max="1" step="0.05" value="0.8">
+                    <span id="volumeValue" class="text-xs font-mono w-8 text-right">80%</span>
+                </div>
+                
+                <button onclick="requestNotificationPermission()" 
+                        class="flex items-center gap-x-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 transition-colors rounded-3xl text-sm border border-zinc-700">
+                    <i class="fa-solid fa-bell text-emerald-400"></i>
+                    <span class="hidden md:inline text-xs">Notifications</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-6 py-8">
+        
+        <!-- Hero Clock -->
+        <div class="flex flex-col items-center justify-center mb-12">
+            <div class="text-center">
+                <div class="inline-flex items-center gap-x-2 px-4 py-1 bg-zinc-900 rounded-3xl border border-zinc-700 mb-3">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span class="text-emerald-400 text-xs font-medium tracking-[2px]">LIVE • IST</span>
+                </div>
+                
+                <div id="currentTime" 
+                     class="digital-clock text-[5.5rem] md:text-[7rem] font-bold tracking-[-6px] text-white tabular-nums">
+                    09:52
+                </div>
+                <div id="currentDate" class="text-xl text-zinc-400 font-medium -mt-3"></div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <h2 class="section-header flex items-center gap-x-2">
+                    <i class="fa-solid fa-bolt text-yellow-400"></i> 
+                    <span>क्विक अलार्म</span>
+                </h2>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button onclick="quickAddAlarm('07:00', 'सुबह उठो', 'default')" 
+                        class="group flex items-center gap-x-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-indigo-500/50 px-5 py-4 rounded-3xl transition-all active:scale-[0.985]">
+                    <div class="text-left">
+                        <div class="font-semibold">07:00 AM</div>
+                        <div class="text-xs text-zinc-500">सुबह उठो</div>
+                    </div>
+                    <i class="fa-solid fa-sun ml-auto text-yellow-400 group-hover:scale-110 transition-transform"></i>
+                </button>
+                
+                <button onclick="quickAddAlarm('08:30', 'दवाई लेने का समय', 'default')" 
+                        class="group flex items-center gap-x-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-indigo-500/50 px-5 py-4 rounded-3xl transition-all active:scale-[0.985]">
+                    <div class="text-left">
+                        <div class="font-semibold">08:30 AM</div>
+                        <div class="text-xs text-zinc-500">दवाई</div>
+                    </div>
+                    <i class="fa-solid fa-pills ml-auto text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                </button>
+                
+                <button onclick="quickAddAlarm('18:00', 'व्यायाम का समय', 'default')" 
+                        class="group flex items-center gap-x-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-indigo-500/50 px-5 py-4 rounded-3xl transition-all active:scale-[0.985]">
+                    <div class="text-left">
+                        <div class="font-semibold">06:00 PM</div>
+                        <div class="text-xs text-zinc-500">व्यायाम</div>
+                    </div>
+                    <i class="fa-solid fa-dumbbell ml-auto text-orange-400 group-hover:scale-110 transition-transform"></i>
+                </button>
+                
+                <button onclick="quickAddAlarm('22:00', 'सोने से पहले', 'default')" 
+                        class="group flex items-center gap-x-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-indigo-500/50 px-5 py-4 rounded-3xl transition-all active:scale-[0.985]">
+                    <div class="text-left">
+                        <div class="font-semibold">10:00 PM</div>
+                        <div class="text-xs text-zinc-500">रात का अलार्म</div>
+                    </div>
+                    <i class="fa-solid fa-bed ml-auto text-purple-400 group-hover:scale-110 transition-transform"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Set New Alarm -->
+        <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-8 mb-8">
+            <div class="flex items-center gap-x-3 mb-6">
+                <div class="w-9 h-9 bg-indigo-600/20 rounded-2xl flex items-center justify-center">
+                    <i class="fa-solid fa-plus text-indigo-400"></i>
+                </div>
+                <h2 class="section-header">नया अलार्म सेट करें</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <!-- Time -->
+                <div class="md:col-span-3">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1.5">समय</label>
+                    <input type="time" id="alarmTime" value="07:30"
+                           class="modern-input w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3.5 rounded-2xl text-lg font-semibold">
+                </div>
+                
+                <!-- Label -->
+                <div class="md:col-span-4">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1.5">अलार्म संदेश (बोला जाएगा)</label>
+                    <input type="text" id="alarmLabel" placeholder="दवाई लेने का समय हो गया" value="दवाई लेने का समय"
+                           class="modern-input w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3.5 rounded-2xl">
+                    
+                    <!-- Quick chips -->
+                    <div class="flex flex-wrap gap-1.5 mt-2">
+                        <div onclick="setQuickLabel(this, 'दवाई लेने का समय')" class="chip cursor-pointer text-xs px-3 py-1 bg-zinc-800 hover:bg-emerald-900/50 text-emerald-300 rounded-2xl">दवाई</div>
+                        <div onclick="setQuickLabel(this, 'सुबह उठो')" class="chip cursor-pointer text-xs px-3 py-1 bg-zinc-800 hover:bg-yellow-900/50 text-yellow-300 rounded-2xl">उठो</div>
+                        <div onclick="setQuickLabel(this, 'व्यायाम का समय')" class="chip cursor-pointer text-xs px-3 py-1 bg-zinc-800 hover:bg-orange-900/50 text-orange-300 rounded-2xl">व्यायाम</div>
+                        <div onclick="setQuickLabel(this, 'मीटिंग टाइम')" class="chip cursor-pointer text-xs px-3 py-1 bg-zinc-800 hover:bg-blue-900/50 text-blue-300 rounded-2xl">मीटिंग</div>
+                    </div>
+                </div>
+                
+                <!-- Ringtone -->
+                <div class="md:col-span-5">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1.5">रिंगटोन (गैलरी से चुनें)</label>
+                    <div class="flex gap-3">
+                        <div class="flex-1">
+                            <label class="flex items-center justify-center gap-x-2 border border-dashed border-zinc-600 hover:border-indigo-400 transition-colors cursor-pointer bg-zinc-800 rounded-2xl px-4 py-[13px]">
+                                <i class="fa-solid fa-upload text-indigo-400"></i>
+                                <span id="fileName" class="text-sm text-zinc-400 truncate">फ़ाइल चुनें (mp3, wav)</span>
+                                <input type="file" id="ringtoneFile" accept="audio/*" class="hidden" onchange="handleRingtoneSelect(event)">
+                            </label>
+                        </div>
+                        <button onclick="testRingtone()" 
+                                class="px-5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-2xl flex items-center justify-center">
+                            <i class="fa-solid fa-play text-emerald-400"></i>
+                        </button>
+                    </div>
+                    <div id="ringtoneStatus" class="text-xs text-emerald-400 mt-1 hidden">✓ कस्टम रिंगटोन सेट</div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end">
+                <button onclick="addNewAlarm()" 
+                        class="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 transition-all text-white font-semibold rounded-3xl flex items-center gap-x-2 shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>अलार्म जोड़ें</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- My Alarms Section -->
+        <div>
+            <div class="flex items-center justify-between mb-4 px-1">
+                <h2 class="section-header flex items-center gap-x-2">
+                    <i class="fa-solid fa-list-check text-indigo-400"></i> 
+                    <span>मेरे अलार्म <span id="alarmCount" class="text-xs font-mono bg-zinc-800 px-2 py-px rounded-full">0</span></span>
+                </h2>
+                <button onclick="clearAllAlarms()" 
+                        class="text-xs flex items-center gap-x-1.5 text-red-400 hover:text-red-300 transition-colors">
+                    <i class="fa-solid fa-trash"></i>
+                    <span>सभी हटाएं</span>
+                </button>
+            </div>
+            
+            <div id="alarmsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Populated by JS -->
+            </div>
+            
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-12 text-center">
+                <i class="fa-solid fa-clock text-6xl text-zinc-700 mb-4"></i>
+                <p class="text-zinc-400">कोई अलार्म सेट नहीं किया गया है</p>
+                <p class="text-xs text-zinc-500 mt-1">ऊपर से नया अलार्म जोड़ें</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alarm Ringing Modal -->
+    <div id="alarmModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-6">
+        <div class="modal bg-zinc-900 border border-red-500/30 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-red-600 to-rose-600 px-6 py-5 flex items-center gap-x-3">
+                <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <i class="fa-solid fa-bell text-white text-3xl animate-bounce"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="text-white text-lg font-semibold">अलार्म बज रहा है!</div>
+                    <div id="modalTime" class="text-red-200 text-sm"></div>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div id="modalLabel" class="text-3xl font-semibold text-center py-6 text-white leading-tight"></div>
+                
+                <div class="flex justify-center gap-3 mt-2">
+                    <button onclick="snoozeAlarm(5)"
+                            class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 transition-colors rounded-2xl text-sm font-medium flex items-center justify-center gap-x-2">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>5 मिनट स्नूज़</span>
+                    </button>
+                    <button onclick="snoozeAlarm(10)"
+                            class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 transition-colors rounded-2xl text-sm font-medium flex items-center justify-center gap-x-2">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>10 मिनट स्नूज़</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="border-t border-zinc-700 p-4 flex gap-3">
+                <button onclick="dismissAlarm()" 
+                        class="flex-1 py-3 bg-red-600 hover:bg-red-700 active:bg-red-800 transition-all text-white font-semibold rounded-2xl">
+                    <i class="fa-solid fa-check mr-2"></i> 
+                    बंद करें
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent', '#6366f1');
+        }
+
+        // Global variables
+        let alarms = [];
+        let currentAudio = null;
+        let alarmInterval = null;
+        let currentRingingAlarm = null;
+        let volume = 0.8;
+        let selectedRingtoneData = null;
+        let selectedRingtoneName = '';
+
+        // Load alarms from localStorage
+        function loadAlarms() {
+            const saved = localStorage.getItem('alarmAppAlarms');
+            if (saved) {
+                alarms = JSON.parse(saved);
+                // Clean up old temp alarms
+                alarms = alarms.filter(a => !a.isTemp || (a.tempUntil && new Date(a.tempUntil) > new Date()));
+            } else {
+                // Demo alarms
+                alarms = [
+                    {
+                        id: Date.now(),
+                        time: "07:30",
+                        label: "सुबह उठो - योगा टाइम",
+                        audioData: null,
+                        enabled: true,
+                        lastTriggered: null,
+                        ringtoneName: "Default"
+                    },
+                    {
+                        id: Date.now() + 1,
+                        time: "08:30",
+                        label: "दवाई लेने का समय हो गया है",
+                        audioData: null,
+                        enabled: true,
+                        lastTriggered: null,
+                        ringtoneName: "Default"
+                    }
+                ];
+                saveAlarms();
+            }
+            renderAlarms();
+        }
+
+        function saveAlarms() {
+            localStorage.setItem('alarmAppAlarms', JSON.stringify(alarms));
+        }
+
+        // Update live clock
+        function updateClock() {
+            const now = new Date();
+            
+            // 12-hour format for display
+            let hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            
+            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            document.getElementById('currentTime').innerHTML = `${timeStr}<span class="text-4xl align-super ml-1 text-zinc-400">${ampm}</span>`;
+            
+            // Date
+            const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+            const dateStr = now.toLocaleDateString('hi-IN', dateOptions);
+            document.getElementById('currentDate').innerHTML = dateStr + ' • ' + now.getFullYear();
+            
+            // Check alarms every second (but only trigger on minute change)
+            checkAlarms(now);
+        }
+
+        // Check for alarms
+        function checkAlarms(now) {
+            const currentTimeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            const todayStr = now.toISOString().split('T')[0];
+            
+            alarms.forEach(alarm => {
+                if (!alarm.enabled) return;
+                if (alarm.time !== currentTimeStr) return;
+                
+                // Check if already triggered today
+                if (alarm.lastTriggered === todayStr) return;
+                
+                // Trigger the alarm
+                triggerAlarm(alarm);
+                
+                // Mark as triggered today
+                alarm.lastTriggered = todayStr;
+                saveAlarms();
+                renderAlarms();
+            });
+        }
+
+        // Trigger alarm
+        function triggerAlarm(alarm) {
+            currentRingingAlarm = alarm;
+            
+            // Show modal
+            const modal = document.getElementById('alarmModal');
+            document.getElementById('modalLabel').innerHTML = alarm.label || "अलार्म का समय हो गया!";
+            document.getElementById('modalTime').innerHTML = formatTime12h(alarm.time) + ' • ' + new Date().toLocaleDateString('hi-IN', {weekday: 'short'});
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Play sound
+            if (alarm.audioData) {
+                playCustomAlarm(alarm.audioData);
+            } else {
+                startDefaultAlarmSound();
+            }
+            
+            // Speak the message
+            speakMessage(alarm.label || "अलार्म बज रहा है");
+            
+            // Browser notification
+            if (Notification.permission === "granted") {
+                new Notification("🔔 अलार्म घड़ी", {
+                    body: alarm.label || "अलार्म का समय हो गया!",
+                    icon: "https://cdn-icons-png.flaticon.com/512/2950/2950709.png",
+                    tag: "alarm-" + alarm.id
+                });
+            }
+            
+            // Add pulse animation to body
+            document.body.classList.add('alarm-active');
+        }
+
+        // Dismiss alarm
+        function dismissAlarm() {
+            const modal = document.getElementById('alarmModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            stopAllSounds();
+            document.body.classList.remove('alarm-active');
+            
+            // If it was a temp snooze alarm, remove it
+            if (currentRingingAlarm && currentRingingAlarm.isTemp) {
+                alarms = alarms.filter(a => a.id !== currentRingingAlarm.id);
+                saveAlarms();
+                renderAlarms();
+            }
+            
+            currentRingingAlarm = null;
+        }
+
+        // Snooze alarm
+        function snoozeAlarm(minutes) {
+            if (!currentRingingAlarm) return;
+            
+            stopAllSounds();
+            const modal = document.getElementById('alarmModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.classList.remove('alarm-active');
+            
+            // Create a temporary snooze alarm
+            const now = new Date();
+            let [h, m] = currentRingingAlarm.time.split(':').map(Number);
+            
+            // Add snooze minutes
+            m += minutes;
+            h += Math.floor(m / 60);
+            m = m % 60;
+            h = h % 24;
+            
+            const newTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            
+            const snoozeAlarm = {
+                ...currentRingingAlarm,
+                id: Date.now(),
+                time: newTime,
+                isTemp: true,
+                tempUntil: new Date(now.getTime() + (minutes * 60000 + 60000)).toISOString(), // auto clean after
+                lastTriggered: null
+            };
+            
+            alarms.push(snoozeAlarm);
+            saveAlarms();
+            renderAlarms();
+            
+            // Show toast
+            showToast(`${minutes} मिनट बाद स्नूज़ किया गया`);
+            
+            currentRingingAlarm = null;
+        }
+
+        // Play custom ringtone
+        function playCustomAlarm(audioData, loop = true) {
+            stopAllSounds();
+            
+            currentAudio = new Audio(audioData);
+            currentAudio.loop = loop;
+            currentAudio.volume = volume;
+            
+            currentAudio.play().catch(err => {
+                console.log("Audio play failed:", err);
+                startDefaultAlarmSound();
+            });
+        }
+
+        // Default alarm sound using Web Audio API
+        function startDefaultAlarmSound() {
+            stopAllSounds();
+            
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let isPlaying = true;
+            
+            function playBeep(frequency, duration, delay) {
+                if (!isPlaying) return;
+                
+                setTimeout(() => {
+                    if (!isPlaying) return;
+                    
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    const filter = audioCtx.createBiquadFilter();
+                    
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.value = frequency;
+                    
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 1400;
+                    
+                    gainNode.gain.value = volume * 0.6;
+                    
+                    const compressor = audioCtx.createDynamicsCompressor();
+                    
+                    oscillator.connect(filter);
+                    filter.connect(gainNode);
+                    gainNode.connect(compressor);
+                    compressor.connect(audioCtx.destination);
+                    
+                    oscillator.start();
+                    
+                    setTimeout(() => {
+                        gainNode.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                        setTimeout(() => {
+                            oscillator.stop();
+                        }, 500);
+                    }, duration);
+                }, delay);
+            }
+            
+            // Classic alarm pattern
+            const pattern = [
+                [880, 280, 0],
+                [880, 280, 380],
+                [880, 280, 760],
+                [660, 450, 1200],
+                [880, 280, 1800]
+            ];
+            
+            function playPattern() {
+                if (!isPlaying) return;
+                pattern.forEach(([freq, dur, del]) => {
+                    playBeep(freq, dur, del);
+                });
+                
+                // Repeat pattern
+                setTimeout(() => {
+                    if (isPlaying) playPattern();
+                }, 2800);
+            }
+            
+            playPattern();
+            
+            // Store reference to stop later
+            window.currentAlarmCtx = { stop: () => { isPlaying = false; } };
+        }
+
+        function stopAllSounds() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            
+            if (window.currentAlarmCtx && window.currentAlarmCtx.stop) {
+                window.currentAlarmCtx.stop();
+                window.currentAlarmCtx = null;
+            }
+            
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
+            }
+            
+            // Stop speech
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+            }
+        }
+
+        // Text to speech
+        function speakMessage(text) {
+            if (!('speechSynthesis' in window)) return;
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'hi-IN';
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+            utterance.volume = volume;
+            
+            // Try to find Hindi voice
+            const voices = speechSynthesis.getVoices();
+            const hindiVoice = voices.find(v => v.lang.includes('hi') || v.name.toLowerCase().includes('hindi'));
+            if (hindiVoice) utterance.voice = hindiVoice;
+            
+            speechSynthesis.speak(utterance);
+        }
+
+        // Format time to 12-hour
+        function formatTime12h(time24) {
+            let [hours, minutes] = time24.split(':').map(Number);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+        }
+
+        // Render all alarms
+        function renderAlarms() {
+            const container = document.getElementById('alarmsList');
+            const emptyState = document.getElementById('emptyState');
+            container.innerHTML = '';
+            
+            if (alarms.length === 0) {
+                emptyState.classList.remove('hidden');
+                document.getElementById('alarmCount').innerText = '0';
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+            
+            document.getElementById('alarmCount').innerText = alarms.length;
+            
+            alarms.forEach((alarm, index) => {
+                const isEnabled = alarm.enabled;
+                const time12 = formatTime12h(alarm.time);
+                
+                const cardHTML = `
+                    <div class="alarm-card bg-zinc-900 border ${isEnabled ? 'border-indigo-500/30' : 'border-zinc-700'} rounded-3xl p-5 flex flex-col">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <div class="flex items-baseline gap-x-1">
+                                    <span class="text-4xl font-bold tabular-nums tracking-tighter">${time12.split(' ')[0]}</span>
+                                    <span class="text-lg text-zinc-400 font-medium">${time12.split(' ')[1]}</span>
+                                </div>
+                                <div class="text-xs text-zinc-500 mt-0.5">${alarm.ringtoneName || 'Default'}</div>
+                            </div>
+                            
+                            <div class="flex items-center gap-x-2">
+                                <!-- Toggle -->
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" ${isEnabled ? 'checked' : ''} 
+                                           onchange="toggleAlarm(${alarm.id}, this.checked)"
+                                           class="sr-only peer">
+                                    <div class="w-11 h-6 bg-zinc-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1">
+                            <div class="text-lg font-medium leading-tight mb-3 line-clamp-2">${alarm.label || 'अलार्म'}</div>
+                            
+                            <div class="flex items-center gap-x-2 text-xs">
+                                ${alarm.audioData ? 
+                                    `<div class="px-2.5 py-1 bg-emerald-900/30 text-emerald-400 rounded-2xl flex items-center gap-x-1">
+                                        <i class="fa-solid fa-music text-xs"></i> 
+                                        <span>Custom</span>
+                                    </div>` : 
+                                    `<div class="px-2.5 py-1 bg-zinc-700 text-zinc-400 rounded-2xl flex items-center gap-x-1">
+                                        <i class="fa-solid fa-bell text-xs"></i> 
+                                        <span>Default</span>
+                                    </div>`
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between mt-5 pt-4 border-t border-zinc-700">
+                            <div class="flex gap-x-1">
+                                <button onclick="playAlarmRingtone(${alarm.id})" 
+                                        class="w-9 h-9 flex items-center justify-center text-emerald-400 hover:bg-emerald-900/30 rounded-2xl transition-colors">
+                                    <i class="fa-solid fa-play fa-fw"></i>
+                                </button>
+                                
+                                <button onclick="editAlarm(${alarm.id})" 
+                                        class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:bg-zinc-700 rounded-2xl transition-colors">
+                                    <i class="fa-solid fa-edit fa-fw"></i>
+                                </button>
+                            </div>
+                            
+                            <button onclick="deleteAlarm(${alarm.id})" 
+                                    class="text-red-400 hover:text-red-500 px-3 py-1 text-xs flex items-center gap-x-1 hover:bg-red-900/20 rounded-2xl transition-colors">
+                                <i class="fa-solid fa-trash fa-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                container.innerHTML += cardHTML;
+            });
+        }
+
+        // Add new alarm
+        function addNewAlarm() {
+            const timeInput = document.getElementById('alarmTime').value;
+            const labelInput = document.getElementById('alarmLabel').value.trim();
+            const fileInput = document.getElementById('ringtoneFile');
+            
+            if (!timeInput) {
+                alert("कृपया समय चुनें!");
+                return;
+            }
+            
+            const newAlarm = {
+                id: Date.now(),
+                time: timeInput,
+                label: labelInput || "अलार्म का समय",
+                audioData: selectedRingtoneData,
+                enabled: true,
+                lastTriggered: null,
+                ringtoneName: selectedRingtoneName || "Default"
+            };
+            
+            alarms.unshift(newAlarm);
+            saveAlarms();
+            renderAlarms();
+            
+            // Reset form
+            document.getElementById('alarmLabel').value = '';
+            document.getElementById('ringtoneFile').value = '';
+            document.getElementById('fileName').innerText = 'फ़ाइल चुनें (mp3, wav)';
+            document.getElementById('ringtoneStatus').classList.add('hidden');
+            selectedRingtoneData = null;
+            selectedRingtoneName = '';
+            
+            // Success feedback
+            showToast("अलार्म सफलतापूर्वक जोड़ा गया!");
+        }
+
+        // Quick add from chips
+        function quickAddAlarm(time, label, type) {
+            const newAlarm = {
+                id: Date.now(),
+                time: time,
+                label: label,
+                audioData: null,
+                enabled: true,
+                lastTriggered: null,
+                ringtoneName: "Default"
+            };
+            
+            alarms.unshift(newAlarm);
+            saveAlarms();
+            renderAlarms();
+            
+            showToast(`${label} के लिए अलार्म सेट हो गया!`);
+        }
+
+        function setQuickLabel(element, text) {
+            document.getElementById('alarmLabel').value = text;
+            
+            // Visual feedback
+            document.querySelectorAll('.chip').forEach(el => el.classList.remove('!bg-indigo-600', '!text-white'));
+            element.classList.add('!bg-indigo-600', '!text-white');
+            
+            setTimeout(() => {
+                element.classList.remove('!bg-indigo-600', '!text-white');
+            }, 800);
+        }
+
+        // Handle ringtone file selection
+        function handleRingtoneSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const fileNameEl = document.getElementById('fileName');
+            fileNameEl.innerText = file.name.length > 22 ? file.name.substring(0, 19) + '...' : file.name;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                selectedRingtoneData = e.target.result;
+                selectedRingtoneName = file.name;
+                document.getElementById('ringtoneStatus').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Test ringtone from form
+        function testRingtone() {
+            const fileInput = document.getElementById('ringtoneFile');
+            
+            if (selectedRingtoneData) {
+                playCustomAlarm(selectedRingtoneData, false);
+                setTimeout(() => {
+                    if (currentAudio) currentAudio.pause();
+                }, 4500);
+            } else if (fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    playCustomAlarm(e.target.result, false);
+                    setTimeout(() => {
+                        if (currentAudio) currentAudio.pause();
+                    }, 4500);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                startDefaultAlarmSound();
+                setTimeout(stopAllSounds, 4500);
+            }
+        }
+
+        // Play ringtone from alarm card
+        function playAlarmRingtone(alarmId) {
+            const alarm = alarms.find(a => a.id === alarmId);
+            if (!alarm) return;
+            
+            if (alarm.audioData) {
+                playCustomAlarm(alarm.audioData, false);
+                setTimeout(() => {
+                    if (currentAudio) currentAudio.pause();
+                }, 5000);
+            } else {
+                startDefaultAlarmSound();
+                setTimeout(stopAllSounds, 4500);
+            }
+        }
+
+        // Toggle alarm on/off
+        function toggleAlarm(alarmId, isEnabled) {
+            const alarm = alarms.find(a => a.id === alarmId);
+            if (!alarm) return;
+            
+            alarm.enabled = isEnabled;
+            saveAlarms();
+            
+            // Visual update only (no full re-render needed)
+            renderAlarms();
+        }
+
+        // Edit alarm
+        function editAlarm(alarmId) {
+            const alarm = alarms.find(a => a.id === alarmId);
+            if (!alarm) return;
+            
+            // Pre-fill form
+            document.getElementById('alarmTime').value = alarm.time;
+            document.getElementById('alarmLabel').value = alarm.label || '';
+            
+            // Clear previous selection
+            selectedRingtoneData = alarm.audioData;
+            selectedRingtoneName = alarm.ringtoneName || 'Default';
+            
+            if (alarm.audioData) {
+                document.getElementById('fileName').innerText = alarm.ringtoneName || 'Custom Ringtone';
+                document.getElementById('ringtoneStatus').classList.remove('hidden');
+            } else {
+                document.getElementById('fileName').innerText = 'फ़ाइल चुनें (mp3, wav)';
+                document.getElementById('ringtoneStatus').classList.add('hidden');
+            }
+            
+            // Change add button to update
+            const addBtn = document.querySelector('button[onclick="addNewAlarm()"]');
+            const originalText = addBtn.innerHTML;
+            addBtn.innerHTML = `<i class="fa-solid fa-save mr-2"></i> अपडेट करें`;
+            addBtn.onclick = () => updateAlarm(alarmId, addBtn, originalText);
+            
+            // Scroll to form
+            document.querySelector('.bg-zinc-900.border.border-zinc-700').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateAlarm(alarmId, btnElement, originalText) {
+            const alarm = alarms.find(a => a.id === alarmId);
+            if (!alarm) return;
+            
+            const timeInput = document.getElementById('alarmTime').value;
+            const labelInput = document.getElementById('alarmLabel').value.trim();
+            
+            alarm.time = timeInput;
+            alarm.label = labelInput || "अलार्म का समय";
+            
+            if (selectedRingtoneData) {
+                alarm.audioData = selectedRingtoneData;
+                alarm.ringtoneName = selectedRingtoneName || "Custom";
+            }
+            
+            saveAlarms();
+            renderAlarms();
+            
+            // Reset form
+            document.getElementById('alarmLabel').value = '';
+            document.getElementById('ringtoneFile').value = '';
+            document.getElementById('fileName').innerText = 'फ़ाइल चुनें (mp3, wav)';
+            document.getElementById('ringtoneStatus').classList.add('hidden');
+            selectedRingtoneData = null;
+            selectedRingtoneName = '';
+            
+            // Restore button
+            btnElement.innerHTML = originalText;
+            btnElement.onclick = () => addNewAlarm();
+            
+            showToast("अलार्म अपडेट हो गया!");
+        }
+
+        // Delete alarm
+        function deleteAlarm(alarmId) {
+            if (!confirm("क्या आप इस अलार्म को हटाना चाहते हैं?")) return;
+            
+            alarms = alarms.filter(a => a.id !== alarmId);
+            saveAlarms();
+            renderAlarms();
+            
+            showToast("अलार्म हटा दिया गया");
+        }
+
+        function clearAllAlarms() {
+            if (!confirm("सभी अलार्म हटाएं?")) return;
+            
+            alarms = [];
+            saveAlarms();
+            renderAlarms();
+        }
+
+        // Volume control
+        function setupVolumeControl() {
+            const slider = document.getElementById('volumeSlider');
+            const valueEl = document.getElementById('volumeValue');
+            
+            slider.addEventListener('input', function() {
+                volume = parseFloat(this.value);
+                valueEl.innerText = Math.round(volume * 100) + '%';
+                
+                // Update current playing audio volume
+                if (currentAudio) {
+                    currentAudio.volume = volume;
+                }
+            });
+            
+            // Set initial
+            valueEl.innerText = Math.round(volume * 100) + '%';
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-white px-6 py-3 rounded-3xl flex items-center gap-x-3 shadow-xl z-[200]`;
+            toast.innerHTML = `
+                <i class="fa-solid fa-check-circle text-emerald-400"></i>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 2200);
+        }
+
+        // Request notification permission
+        function requestNotificationPermission() {
+            if (!("Notification" in window)) {
+                alert("आपका ब्राउज़र नोटिफिकेशन सपोर्ट नहीं करता।");
+                return;
+            }
+            
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    showToast("नोटिफिकेशन चालू हो गए!");
+                    new Notification("अलार्म घड़ी", { body: "नोटिफिकेशन सफलतापूर्वक चालू!" });
+                } else {
+                    showToast("नोटिफिकेशन की अनुमति नहीं दी गई");
+                }
+            });
+        }
+
+        // Handle ringtone file name display
+        function setupFileInput() {
+            const fileInput = document.getElementById('ringtoneFile');
+            const fileNameEl = document.getElementById('fileName');
+            
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const name = this.files[0].name;
+                    fileNameEl.innerText = name.length > 25 ? name.substring(0, 22) + '...' : name;
+                }
+            });
+        }
+
+        // Keyboard shortcuts
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '?' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault();
+                    const timeInput = document.getElementById('alarmTime');
+                    timeInput.focus();
+                    timeInput.select();
+                }
+                
+                if (e.key.toLowerCase() === 'escape') {
+                    const modal = document.getElementById('alarmModal');
+                    if (!modal.classList.contains('hidden')) {
+                        dismissAlarm();
+                    }
+                }
+            });
+            
+            // Easter egg: press 'a' to add quick alarm
+            let aCount = 0;
+            document.addEventListener('keypress', function(e) {
+                if (e.key.toLowerCase() === 'a') {
+                    aCount++;
+                    if (aCount >= 3) {
+                        aCount = 0;
+                        quickAddAlarm('09:00', 'टेस्ट अलार्म', 'default');
+                    }
+                }
+            });
+        }
+
+        // Initialize everything
+        function initializeApp() {
+            initializeTailwind();
+            
+            // Load saved alarms
+            loadAlarms();
+            
+            // Start live clock
+            updateClock();
+            setInterval(updateClock, 1000);
+            
+            // Setup controls
+            setupVolumeControl();
+            setupFileInput();
+            setupKeyboardShortcuts();
+            
+            // Auto request notification on load (optional)
+            setTimeout(() => {
+                if (Notification.permission === "default") {
+                    // Don't auto ask, let user click
+                }
+            }, 8000);
+            
+            // Welcome message
+            setTimeout(() => {
+                if (alarms.length > 0) {
+                    // Already has demo alarms
+                }
+            }, 1200);
+            
+            // Make sure speech voices are loaded
+            if ('speechSynthesis' in window) {
+                speechSynthesis.getVoices();
+                setTimeout(() => speechSynthesis.getVoices(), 1000);
+            }
+            
+            // Final touch: show how many alarms
+            console.log('%c[Alarm App] Full featured alarm clock ready!', 'color:#64748b');
+        }
+
+        // Boot the app
+        window.onload = initializeApp;
+        
+        // Expose some functions for debugging
+        window.AlarmApp = { addTestAlarm: () => quickAddAlarm('12:00', 'टेस्ट अलार्म', 'default') };
+
+        // ==================== PWA INSTALLATION ====================
+        let deferredPrompt;
+
+        function setupPWA() {
+            const installBtn = document.getElementById('installBtn');
+            
+            // Listen for beforeinstallprompt
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                // Show install button
+                if (installBtn) {
+                    installBtn.style.display = 'flex';
+                    installBtn.classList.remove('hidden');
+                }
+            });
+
+            // Check if already installed
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                if (installBtn) installBtn.style.display = 'none';
+            }
+
+            // Register Service Worker for offline support
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('✅ Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            }
+        }
+
+        function installPWA() {
+            const installBtn = document.getElementById('installBtn');
+            
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        showToast('ऐप सफलतापूर्वक इंस्टॉल हो गया! 🎉');
+                        if (installBtn) installBtn.style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                });
+            } else {
+                // Fallback for browsers that don't support prompt
+                showToast('अपने ब्राउज़र के मेनू में "Add to Home Screen" या "Install" विकल्प चुनें');
+            }
+        }
+
+        // Update initializeApp to include PWA setup
+        const originalInitialize = initializeApp;
+        initializeApp = function() {
+            originalInitialize();
+            setupPWA();
+            
+            // Auto hide install button after 30 seconds if not used
+            setTimeout(() => {
+                const btn = document.getElementById('installBtn');
+                if (btn && btn.style.display !== 'none') {
+                    btn.style.opacity = '0.6';
+                }
+            }, 30000);
+        };
+    </script>
+</body>
+</html>
